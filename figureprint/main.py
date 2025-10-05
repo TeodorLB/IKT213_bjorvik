@@ -163,12 +163,12 @@ def process_dataset(dataset_root='./data_check/', approaches=['orb_bf', 'sift_fl
                 fig, ax = plt.subplots(figsize=(6,5))
                 disp.plot(cmap="Blues", values_format="d", ax=ax)
                 plt.title(f"Confusion Matrix {approach.upper()}")
-                plt.show()
 
                 cm_filename = f"confusion_matrix_{approach}.png"
                 cm_path = os.path.join(results_folder, cm_filename)
                 fig.savefig(cm_path)
                 print(f"DEBUG: {approach} Confusion matrix saved to {cm_path}")
+                plt.show()
 
             # Match counts plot
             if results[approach]['match_counts']:
@@ -182,11 +182,13 @@ def process_dataset(dataset_root='./data_check/', approaches=['orb_bf', 'sift_fl
                 plt.ylabel('Number of Good Matches')
                 plt.title(f'Match Counts per Folder ({approach.upper()}) (Green=Same, Red=Different)')
                 plt.legend()
-                plt.show()
+            
                 tuning_filename = f"match_counts_{approach}.png"
                 tuning_path = os.path.join(results_folder, tuning_filename)
                 plt.savefig(tuning_path)
                 print(f"DEBUG: {approach} Match counts plot saved to {tuning_path}")
+                plt.show()
+                
     return results # For markdown code
 
 def process_UIA(uia_root='./UIA/', display_inline=False, results_folder='./results/'):
@@ -219,8 +221,44 @@ def process_UIA(uia_root='./UIA/', display_inline=False, results_folder='./resul
         cv2.imwrite(match_img_path, match_img_sift)
         print(f"DEBUG: sift_flann UIA Match image saved to {match_img_path}")
 
+def generate_markdown_report(results_folder, dataset_results, uia_results, approaches=['orb_bf', 'sift_flann'], threshold=20):
+    report_path = os.path.join(results_folder, 'report.md')
+    with open(report_path, 'w') as f:
+        f.write("# Image Matching Report (ORB_BF and SIFT_FLANN)\n\n")
+        f.write(f"**Threshold Used**: {threshold}\n\n")
+
+        for approach in approaches:
+            f.write(f"## {approach.upper()} Approach\n\n")
+            if dataset_results[approach]['total'] > 0:
+                accuracy = (dataset_results[approach]['correct'] / dataset_results[approach]['total']) * 100
+                f.write(f"- **Data_Check Accuracy**: {accuracy:.2f}% ({dataset_results[approach]['correct']}/{dataset_results[approach]['total']})\n\n")
+                f.write("### Confusion Matrix (Data_Check)\n")
+                f.write(f"![Confusion Matrix {approach.upper()}](confusion_matrix_{approach}.png)\n\n")
+                f.write("### Match Counts Plot (Data_Check)\n")
+                f.write(f"![Match Counts {approach.upper()}](match_counts_plot_{approach}.png)\n\n")
+                f.write("### Per-Pair Results (Data_Check)\n")
+                f.write("| Folder | Expected | Predicted | Good Matches | Visualization |\n")
+                f.write("|--------|----------|-----------|--------------|---------------|\n")
+                for folder, count in sorted(dataset_results[approach]['match_counts'].items()):
+                    expected = "Match" if "same" in folder.lower() else "No Match"
+                    predicted = "Match" if count > threshold else "No Match"
+                    img_file = f"{folder}_{approach}_{'match' if predicted == 'Match' else 'no_match'}.png"
+                    f.write(f"| {folder} | {expected} | {predicted} | {count} | ![Match]({img_file}) |\n")
+                f.write("\n")
+
+            if uia_results and approach in uia_results:
+                f.write("### UiA Images Results\n")
+                res = uia_results[approach]
+                f.write(f"- **Predicted**: {res['result']}\n")
+                f.write(f"- **Good Matches**: {res['count']}\n")
+                img_file = f"uia_{approach}_{'match' if res['result'] == 'Match' else 'no_match'}.png"
+                f.write(f"![UiA Match]({img_file})\n\n")
+
+    print(f"Generated Markdown report at: {report_path}")
+
+
 if __name__ == "__main__":
     results_folder = './results/'
     dataset_results = process_dataset(display_inline=False, results_folder=results_folder) # True for pop ups
     uia_results = process_UIA(display_inline=True, results_folder=results_folder)
-    #generate_markdown_report(results_folder, dataset_results, uia_results) # Write once in code
+    generate_markdown_report(results_folder, dataset_results, uia_results) # Write once in code, templatable
