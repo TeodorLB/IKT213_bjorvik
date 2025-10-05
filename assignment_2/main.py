@@ -41,7 +41,13 @@ def hue_shifted(image, emptyPictureArray, hue):
     for y in range(height):
         for x in range(width):
             for c in range(channels):
-                emptyPictureArray[y, x, c] = (int(image[y, x, c]) + int(hue)) % 256
+                new_value = int(image[y, x, c]) + int(hue)
+                if new_value > 255:
+                    emptyPictureArray[y, x, c] = 255
+                elif new_value < 0:
+                    emptyPictureArray[y, x, c] = 0
+                else:
+                    emptyPictureArray[y, x, c] = new_value
     shifted_image = emptyPictureArray
     return shifted_image
 
@@ -65,7 +71,7 @@ if __name__ == "__main__":
         padded = padding(img, 100)
         cv2.imwrite("assignment_2/lena_padded.png", padded)
 
-        cropped = crop(img, 80, 512-80, 130, 512-130)
+        cropped = crop(img, 80, 130, 80, 130) # these locations are the start and cutoff point of the crop, which i think makes this solution wrong and the previous correct, but i changed it to match the feedback. I understand crop by 80 pixels and 130 to mean cut off 80 pixels from the top left and cut off 130 pixels from the bottom right.
         cv2.imwrite("assignment_2/lena_cropped.png", cropped)
 
         rezised = resize(img,200,200)
